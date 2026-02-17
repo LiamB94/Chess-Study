@@ -11,4 +11,6 @@ public class AppDbContext : DbContext
     public DbSet<User> Users { get; set; }
     public DbSet<ChessFile> ChessFiles { get; set; }
     public DbSet<Position> Positions { get; set; }
+    public DbSet<Note> Notes { get; set; }
+
 }
