@@ -3,6 +3,7 @@ using ChessStudy.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ChessStudy.Api.DTOs;
+using System.Linq.Expressions;
 
 namespace ChessStudy.Api.Controllers;
 
@@ -10,6 +11,18 @@ namespace ChessStudy.Api.Controllers;
 [Route("api/positions")]
 public class PositionsController : ControllerBase
 {
+    private static readonly Expression<Func<Position, PositionNode>> NodeSelector =
+    p => new PositionNode
+    {
+        PositionId = p.PositionId,
+        ParentPositionId = p.ParentPositionId,
+        Fen = p.Fen,
+        MoveUci = p.MoveUci,
+        MoveSan = p.MoveSan,
+        Ply = p.Ply,
+        SiblingOrder = p.SiblingOrder
+    };
+
     private readonly AppDbContext _db;
 
     public PositionsController(AppDbContext db)
@@ -99,23 +112,15 @@ public class PositionsController : ControllerBase
             .Where(p => p.ChessFileId == fileId)
             .OrderBy(p => p.Ply)
             .ThenBy(p => p.SiblingOrder)
-            .Select(p => new
-            {
-                p.PositionId,
-                p.ParentPositionId,
-                p.ChessFileId,
-                p.Fen,
-                p.MoveUci,
-                p.MoveSan,
-                p.Ply,
-                p.SiblingOrder
-            })
+            .Select(NodeSelector)
             .ToListAsync();
 
         return Ok(positions);
 
 
     }
+
+    
 
     // GET /api/positions/tree?fileId=2
     [HttpGet("tree")]
@@ -126,36 +131,27 @@ public class PositionsController : ControllerBase
 
         var rootPosition = await _db.Positions
             .Where(p => p.ChessFileId == fileId && p.ParentPositionId == null)
-            .Select(p => new PositionNode
-            {
-                PositionId = p.PositionId,
-                ParentPositionId = p.ParentPositionId,
-                Fen = p.Fen,
-                MoveUci = p.MoveUci,
-                MoveSan = p.MoveSan,
-                Ply = p.Ply,
-                SiblingOrder = p.SiblingOrder
-            })
+            .Select(NodeSelector)
             .FirstOrDefaultAsync();
 
         if (rootPosition == null) return NotFound("Root position not found for this file.");
 
-        var firstChildren = await _db.Positions
-            .Where(p => p.ParentPositionId == rootPosition.PositionId)
+        await BuildChildrenAsync(rootPosition);
+        return Ok(rootPosition);
+    }
+
+    private async Task BuildChildrenAsync(PositionNode node) {
+        var children = await _db.Positions
+            .Where(p => p.ParentPositionId == node.PositionId)
             .OrderBy(p => p.SiblingOrder)
-            .Select(p => new PositionNode
-            {
-                PositionId = p.PositionId,
-                ParentPositionId = p.ParentPositionId,
-                Fen = p.Fen,
-                MoveUci = p.MoveUci,
-                MoveSan = p.MoveSan,
-                Ply = p.Ply,
-                SiblingOrder = p.SiblingOrder
-            })
+            .Select(NodeSelector)
             .ToListAsync();
 
-        return Ok(new { Root = rootPosition, Children = firstChildren });
+        node.Children = children;
+        foreach (var child in node.Children)
+        {
+            await BuildChildrenAsync(child);
+        }
     }
 
     
