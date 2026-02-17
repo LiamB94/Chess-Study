@@ -2,6 +2,7 @@ using ChessStudy.Api.Data;
 using ChessStudy.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ChessStudy.Api.DTOs;
 
 namespace ChessStudy.Api.Controllers;
 
@@ -93,7 +94,7 @@ public class PositionsController : ControllerBase
     {
         var fileExists = await _db.ChessFiles.AnyAsync(f => f.ChessFileId == fileId);
         if (!fileExists) return NotFound("File not found.");
-        
+
         var positions = await _db.Positions
             .Where(p => p.ChessFileId == fileId)
             .OrderBy(p => p.Ply)
@@ -115,5 +116,47 @@ public class PositionsController : ControllerBase
 
 
     }
+
+    // GET /api/positions/tree?fileId=2
+    [HttpGet("tree")]
+    public async Task<IActionResult> GetPositionTree([FromQuery] int fileId)
+    {
+        var fileExists = await _db.ChessFiles.AnyAsync(f => f.ChessFileId == fileId);
+        if (!fileExists) return NotFound("File not found.");
+
+        var rootPosition = await _db.Positions
+            .Where(p => p.ChessFileId == fileId && p.ParentPositionId == null)
+            .Select(p => new PositionNode
+            {
+                PositionId = p.PositionId,
+                ParentPositionId = p.ParentPositionId,
+                Fen = p.Fen,
+                MoveUci = p.MoveUci,
+                MoveSan = p.MoveSan,
+                Ply = p.Ply,
+                SiblingOrder = p.SiblingOrder
+            })
+            .FirstOrDefaultAsync();
+
+        if (rootPosition == null) return NotFound("Root position not found for this file.");
+
+        var firstChildren = await _db.Positions
+            .Where(p => p.ParentPositionId == rootPosition.PositionId)
+            .OrderBy(p => p.SiblingOrder)
+            .Select(p => new PositionNode
+            {
+                PositionId = p.PositionId,
+                ParentPositionId = p.ParentPositionId,
+                Fen = p.Fen,
+                MoveUci = p.MoveUci,
+                MoveSan = p.MoveSan,
+                Ply = p.Ply,
+                SiblingOrder = p.SiblingOrder
+            })
+            .ToListAsync();
+
+        return Ok(new { Root = rootPosition, Children = firstChildren });
+    }
+
     
 }
