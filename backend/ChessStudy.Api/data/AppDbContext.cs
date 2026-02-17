@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 
+using ChessStudy.Api.Models;
+
 namespace ChessStudy.Api.Data;
 
 public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-    // add DbSet<>s here later
+    public DbSet<User> Users { get; set; }
 }

@@ -1,7 +1,8 @@
-## Chess Study App
+# Chess Study App
 Designed for storing notes on positions and openings
 
-# Tech Stack
+## Tech Stack
 - Angular
 - .NET
+- C#
 - PostgreSQL
