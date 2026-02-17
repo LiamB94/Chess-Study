@@ -86,4 +86,34 @@ public class PositionsController : ControllerBase
         });
 
     }
+
+    // GET /api/positions?fileId=2
+    [HttpGet]
+    public async Task<IActionResult> GetPositions([FromQuery] int fileId)
+    {
+        var fileExists = await _db.ChessFiles.AnyAsync(f => f.ChessFileId == fileId);
+        if (!fileExists) return NotFound("File not found.");
+        
+        var positions = await _db.Positions
+            .Where(p => p.ChessFileId == fileId)
+            .OrderBy(p => p.Ply)
+            .ThenBy(p => p.SiblingOrder)
+            .Select(p => new
+            {
+                p.PositionId,
+                p.ParentPositionId,
+                p.ChessFileId,
+                p.Fen,
+                p.MoveUci,
+                p.MoveSan,
+                p.Ply,
+                p.SiblingOrder
+            })
+            .ToListAsync();
+
+        return Ok(positions);
+
+
+    }
+    
 }
