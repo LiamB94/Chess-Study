@@ -204,21 +204,22 @@ public class PositionsController : ControllerBase
         var allPositions = await _db.Positions.Where(p => p.ChessFileId == position.ChessFileId).ToListAsync();
 
         // Build lookup: parentId -> children
-        var lookup = allPositions.GroupBy(p => p.ParentPositionId).ToDictionary(g => g.Key, g => g.ToList());
+        var lookup = allPositions.Where(p => p.ParentPositionId != null).GroupBy(p => p.ParentPositionId!.Value).ToDictionary(g => g.Key, g => g.ToList());
 
         // Collect subtree
         var toDelete = new List<Position>();
 
-        void CollectDescendants(int id)
+       void CollectDescendants(int id)
         {
-            if (!lookup.ContainsKey(id)) return;
+            if (!lookup.TryGetValue(id, out var kids)) return;
 
-            foreach (var child in lookup[id])
+            foreach (var child in kids)
             {
                 toDelete.Add(child);
                 CollectDescendants(child.PositionId);
             }
         }
+
 
         // Add the node itself
         toDelete.Add(position);
@@ -231,7 +232,4 @@ public class PositionsController : ControllerBase
 
         return NoContent();
     }
-
-    
-
 }
