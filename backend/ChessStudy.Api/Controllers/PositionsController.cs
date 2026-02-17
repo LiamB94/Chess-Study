@@ -31,6 +31,8 @@ public class PositionsController : ControllerBase
     }
 
     public record CreateRootPositionRequest(string Fen);
+    public record UpdatePositionRequest(string? Fen, string? MoveUci, string? MoveSan);
+
 
     // POST /api/positions/root?fileId=1
     [HttpPost("root")]
@@ -116,11 +118,7 @@ public class PositionsController : ControllerBase
             .ToListAsync();
 
         return Ok(positions);
-
-
     }
-
-    
 
     // GET /api/positions/tree?fileId=2
     [HttpGet("tree")]
@@ -154,5 +152,86 @@ public class PositionsController : ControllerBase
         }
     }
 
+    // GET /api/positions/{positionId}
+    [HttpGet("{positionId}")]
+    public async Task<IActionResult> GetPosition([FromRoute] int positionId)
+    {
+        var position = await _db.Positions
+            .Where(p => p.PositionId == positionId)
+            .Select(NodeSelector)
+            .SingleOrDefaultAsync();
+
+        if (position == null) return NotFound("Position not found.");
+
+        return Ok(position);
+    }
+
+    // PUT /api/positions/{positionId}
+    [HttpPut("{positionId}")]
+    public async Task<IActionResult> PutNode([FromRoute] int positionId, [FromBody] UpdatePositionRequest req)
+    {
+        var position = await _db.Positions
+            .FirstOrDefaultAsync(p => p.PositionId == positionId);
+
+        if (position == null) return NotFound("Position not found.");
+
+        if (req.Fen != null) position.Fen = req.Fen;
+        if (req.MoveUci != null) position.MoveUci = req.MoveUci;
+        if (req.MoveSan != null) position.MoveSan = req.MoveSan;
+
+        await _db.SaveChangesAsync();
+
+        var updatedNode = await _db.Positions
+            .Where(p => p.PositionId == positionId)
+            .Select(NodeSelector)
+            .FirstAsync();
+
+        return Ok(updatedNode);
+    }
+
+    // DELETE /api/positions/{positionId}
+    [HttpDelete("{positionId}")]
+    public async Task<IActionResult> DeleteNode([FromRoute] int positionId)
+    {
+        var position = await _db.Positions.FirstOrDefaultAsync(p => p.PositionId == positionId);
+
+        if (position == null) return NotFound("Position not found.");
+
+        // Optional: prevent deleting root
+        if (position.ParentPositionId == null) return BadRequest("Cannot delete root position.");
+
+        // Load all positions for this file
+        var allPositions = await _db.Positions.Where(p => p.ChessFileId == position.ChessFileId).ToListAsync();
+
+        // Build lookup: parentId -> children
+        var lookup = allPositions.GroupBy(p => p.ParentPositionId).ToDictionary(g => g.Key, g => g.ToList());
+
+        // Collect subtree
+        var toDelete = new List<Position>();
+
+        void CollectDescendants(int id)
+        {
+            if (!lookup.ContainsKey(id)) return;
+
+            foreach (var child in lookup[id])
+            {
+                toDelete.Add(child);
+                CollectDescendants(child.PositionId);
+            }
+        }
+
+        // Add the node itself
+        toDelete.Add(position);
+
+        // Collect its descendants
+        CollectDescendants(positionId);
+
+        _db.Positions.RemoveRange(toDelete);
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
     
+
 }
