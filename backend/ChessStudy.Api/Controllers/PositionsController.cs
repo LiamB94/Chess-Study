@@ -232,4 +232,30 @@ public class PositionsController : ControllerBase
 
         return NoContent();
     }
+
+    // PATCH /api/positions/{parentId}/reorder
+    [HttpPatch("{parentId}/reorder")]
+    public async Task<IActionResult> ReorderSiblings([FromRoute] int parentId, [FromBody] List<int> orderedIds)
+    {
+        var siblings = await _db.Positions
+            .Where(p => p.ParentPositionId == parentId)
+            .ToListAsync();
+
+        var siblingById = siblings.ToDictionary(s => s.PositionId);
+
+        if (siblings.Count != orderedIds.Count || siblings.Any(s => !orderedIds.Contains(s.PositionId))) return BadRequest("Invalid sibling IDs.");
+
+        if (orderedIds.Distinct().Count() != orderedIds.Count) return BadRequest("Duplicate IDs.");
+
+        
+
+        for (int i = 0; i < orderedIds.Count; i++)
+        {
+            var sibling = siblingById[orderedIds[i]];
+            sibling.SiblingOrder = i;
+        }
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
 }

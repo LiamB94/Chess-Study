@@ -36,7 +36,7 @@ public class ChessFilesController : ControllerBase
     }
 
 
-    public record CreateChessFileRequest(string Name, string? Description, string? RootFen);
+    public record CreateChessFileRequest(string Name, string? Description);
 
     [HttpPost]
     public async Task<IActionResult> CreateFile([FromQuery] int userId, [FromBody] CreateChessFileRequest req)
@@ -48,10 +48,7 @@ public class ChessFilesController : ControllerBase
         {
             UserId = userId,
             Name = req.Name.Trim(),
-            Description = req.Description,
-            RootFen = string.IsNullOrWhiteSpace(req.RootFen)
-                ? "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-                : req.RootFen.Trim()
+            Description = req.Description
         };
 
         _db.ChessFiles.Add(file);

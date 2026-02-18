@@ -35,8 +35,7 @@ using (var scope = app.Services.CreateScope())
         {
             UserId = user.UserId,
             Name = "Queen's Gambit",
-            Description = "Dev seed file",
-            RootFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+            Description = "Dev seed file"
         });
 
         db.SaveChanges();

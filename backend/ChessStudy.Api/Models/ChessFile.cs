@@ -19,8 +19,5 @@ public class ChessFile
     [ForeignKey(nameof(UserId))]
     public User User { get; set; } = null!;
 
-    public string RootFen { get; set; } = 
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; // placeholder for the starting position
-
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
