@@ -22,7 +22,7 @@ using (var scope = app.Services.CreateScope())
 
     if (!db.Users.Any())
     {
-        var user = new ChessStudy.Api.Models.User
+        var user = new User
         {
             Email = "test@test.com",
             PasswordHash = "dev-only"
@@ -31,7 +31,7 @@ using (var scope = app.Services.CreateScope())
         db.Users.Add(user);
         db.SaveChanges();
 
-        db.ChessFiles.Add(new ChessStudy.Api.Models.ChessFile
+        db.ChessFiles.Add(new ChessFile
         {
             UserId = user.UserId,
             Name = "Queen's Gambit",
@@ -53,30 +53,5 @@ if (app.Environment.IsDevelopment())
 app.MapControllers();
 // app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
-
-
-
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
