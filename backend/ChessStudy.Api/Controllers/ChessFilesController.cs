@@ -35,6 +35,27 @@ public class ChessFilesController : ControllerBase
         return Ok(files);
     }
 
+    // GET /api/files/{fileId}
+    [HttpGet("{fileId}")]
+    public async Task<IActionResult> GetFileById([FromRoute] int fileId)
+    {
+        var file = await _db.ChessFiles
+            .Where(f => f.ChessFileId == fileId)
+            .Select(f => new
+            {
+                f.ChessFileId,
+                f.Name,
+                f.Description,
+                f.CreatedAt
+            })
+            .FirstOrDefaultAsync();
+
+        if (file == null) {
+            return NotFound("File not found.");
+        }
+
+        return Ok(file);
+    }
 
     public record CreateChessFileRequest(string Name, string? Description);
 
@@ -61,6 +82,47 @@ public class ChessFilesController : ControllerBase
             file.Description,
             file.CreatedAt
         });
+    }
+
+    public record UpdateChessFileRequest(string? Name, string? Description);
+
+    [HttpPatch("{fileId}")]
+    public async Task<IActionResult> UpdateFile([FromRoute] int fileId, [FromBody] UpdateChessFileRequest req) {
+        var file = await _db.ChessFiles.FindAsync(fileId);
+        if (file == null) return NotFound("File not found.");
+
+        var changed = false;
+
+        if (req.Name != null) {
+            var trimmed = req.Name.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed)) return BadRequest("Name cannot be empty.");
+
+            file.Name = trimmed;
+            changed = true;
+        }
+
+        if (req.Description != null) {
+            file.Description = req.Description;
+            changed = true;
+        }
+
+        if (!changed) return BadRequest("No fields provided to update.");
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+
+
+    [HttpDelete("{fileId}")]
+    public async Task<IActionResult> DeleteFile([FromRoute] int fileId) 
+    {
+        var file = await _db.ChessFiles.FindAsync(fileId);
+        if (file == null) return NotFound("File not found.");
+
+        _db.ChessFiles.Remove(file);
+        await _db.SaveChangesAsync();
+        return NoContent();
     }
 
 }

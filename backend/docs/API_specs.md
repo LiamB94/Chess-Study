@@ -18,13 +18,13 @@ All endpoints are prefixed with:
 
 ---
 
-# 1️⃣ Authentication (Future Implementation)
+## 1) Authentication (Future Implementation)
 
-## POST `/api/auth/register`
+### POST `/api/auth/register`
 
 Creates a new user.
 
-### Request Body
+#### Request Body
 
 ```json
 {
@@ -33,7 +33,7 @@ Creates a new user.
 }
 ```
 
-### Response
+#### Response
 
 ```json
 {
@@ -44,11 +44,11 @@ Creates a new user.
 
 ---
 
-## POST `/api/auth/login`
+### POST `/api/auth/login`
 
 Authenticates a user.
 
-### Request Body
+#### Request Body
 
 ```json
 {
@@ -57,7 +57,7 @@ Authenticates a user.
 }
 ```
 
-### Response
+#### Response
 
 ```json
 {
@@ -67,13 +67,13 @@ Authenticates a user.
 
 ---
 
-# 2️⃣ Chess Files
+## 2) Chess Files
 
-## GET `/api/chessfiles?userId=1`
+### GET `/api/files?userId=1`
 
 Returns all files belonging to a user.
 
-### Response
+#### Response
 
 ```json
 [
@@ -87,17 +87,17 @@ Returns all files belonging to a user.
 
 ---
 
-## GET `/api/chessfiles/{fileId}`
+### GET `/api/files/{fileId}`
 
 Returns a single chess file.
 
 ---
 
-## POST `/api/chessfiles`
+### POST `/api/files`
 
 Creates a new chess file and root position.
 
-### Request Body
+#### Request Body
 
 ```json
 {
@@ -107,7 +107,7 @@ Creates a new chess file and root position.
 }
 ```
 
-### Behavior
+#### Behavior
 
 - Creates `ChessFile`
 - Creates root `Position`
@@ -118,11 +118,11 @@ Creates a new chess file and root position.
 
 ---
 
-## PATCH `/api/chessfiles/{fileId}`
+### PATCH `/api/files/{fileId}`
 
 Updates file metadata.
 
-### Request Body
+#### Request Body
 
 ```json
 {
@@ -133,7 +133,7 @@ Updates file metadata.
 
 ---
 
-## DELETE `/api/chessfiles/{fileId}`
+### DELETE `/api/files/{fileId}`
 
 Deletes a chess file.
 
@@ -141,13 +141,13 @@ Deletes a chess file.
 
 ---
 
-# 3️⃣ Positions (Move Tree)
+## 3) Positions (Move Tree)
 
-## GET `/api/positions/tree?fileId=1`
+### GET `/api/positions/tree?fileId=1`
 
 Returns full move tree for a file.
 
-### Response (PositionNode DTO)
+#### Response (PositionNode DTO)
 
 ```json
 {
@@ -164,11 +164,11 @@ Returns full move tree for a file.
 
 ---
 
-## POST `/api/positions`
+### POST `/api/positions`
 
 Creates a new child position.
 
-### Request Body
+#### Request Body
 
 ```json
 {
@@ -177,7 +177,7 @@ Creates a new child position.
 }
 ```
 
-### Behavior
+#### Behavior
 
 - Load parent position
 - Compute:
@@ -189,11 +189,11 @@ Creates a new child position.
 
 ---
 
-## PATCH `/api/positions/{parentId}/reorder`
+### PATCH `/api/positions/{parentId}/reorder`
 
 Reorders sibling positions.
 
-### Request Body
+#### Request Body
 
 ```json
 [5, 3, 8]
@@ -203,7 +203,7 @@ Updates `SiblingOrder` for each child.
 
 ---
 
-## DELETE `/api/positions/{positionId}`
+### DELETE `/api/positions/{positionId}`
 
 Deletes a position.
 
@@ -219,17 +219,17 @@ DELETE /api/positions/{positionId}/subtree
 
 ---
 
-# 4️⃣ Notes
+## 4) Notes
 
-## GET `/api/positions/{positionId}/notes`
+### GET `/api/positions/{positionId}/notes`
 
 Returns notes for a position.
 
 ---
 
-## POST `/api/positions/{positionId}/notes`
+### POST `/api/positions/{positionId}/notes`
 
-### Request Body
+#### Request Body
 
 ```json
 {
@@ -239,29 +239,29 @@ Returns notes for a position.
 
 ---
 
-## PATCH `/api/notes/{noteId}`
+### PATCH `/api/notes/{noteId}`
 
 Updates note content.
 
 ---
 
-## DELETE `/api/notes/{noteId}`
+### DELETE `/api/notes/{noteId}`
 
 Deletes a note.
 
 ---
 
-# 5️⃣ Arrows
+## 5) Arrows
 
-## GET `/api/positions/{positionId}/arrows`
+### GET `/api/positions/{positionId}/arrows`
 
 Returns arrows for a position.
 
 ---
 
-## POST `/api/positions/{positionId}/arrows`
+### POST `/api/positions/{positionId}/arrows`
 
-### Request Body
+#### Request Body
 
 ```json
 {
@@ -273,13 +273,13 @@ Returns arrows for a position.
 
 ---
 
-## DELETE `/api/arrows/{arrowId}`
+### DELETE `/api/arrows/{arrowId}`
 
 Deletes an arrow.
 
 ---
 
-# Data Relationships
+## Data Relationships
 
 ```
 User (1) → (many) ChessFiles
@@ -291,7 +291,7 @@ Position (1) → (many) Arrows
 
 ---
 
-# Domain Rules
+## Domain Rules
 
 - Each `ChessFile` must have exactly one root `Position`.
 - Root Position:
@@ -305,7 +305,7 @@ Position (1) → (many) Arrows
 
 ---
 
-# Architectural Notes
+## Architectural Notes
 
 - Entities (`Models/`) represent database structure.
 - DTOs (`DTOs/`) represent API response shape.
@@ -314,11 +314,3 @@ Position (1) → (many) Arrows
 - `AppDbContext` manages persistence.
 
 ---
-
-# Future Enhancements
-
-- JWT Authentication
-- Role-based authorization
-- Caching move trees
-- Engine validation for moves
-- Soft deletes instead of hard deletes
