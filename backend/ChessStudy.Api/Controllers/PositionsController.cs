@@ -34,6 +34,40 @@ public class PositionsController : ControllerBase
     public record UpdatePositionRequest(string? Fen, string? MoveUci, string? MoveSan);
 
 
+    // GET /api/positions/tree?fileId=2
+    [HttpGet("tree")]
+    public async Task<IActionResult> GetPositionTree([FromQuery] int fileId)
+    {
+
+        var nodes = await _db.Positions
+            .Where(p => p.ChessFileId == fileId)
+            .Select(NodeSelector)
+            .ToListAsync();
+
+        if (nodes.Count == 0) return NotFound("File or Positions not found.");
+
+        var root = nodes.SingleOrDefault(n => n.ParentPositionId == null);
+        if (root == null) return NotFound("Root position not found for this file.");
+
+        var byId = nodes.ToDictionary(n => n.PositionId);
+
+        var childrenByParent = nodes
+            .Where(n => n.ParentPositionId != null)
+            .GroupBy(n => n.ParentPositionId!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderBy(n => n.SiblingOrder).ToList());
+
+        void Attach(PositionNode node)
+        {
+            if (!childrenByParent.TryGetValue(node.PositionId, out var kids)) return;
+            node.Children = kids;
+            foreach (var k in kids) Attach(k);
+        }
+
+        Attach(root);
+        return Ok(root);
+
+    }
+
     // POST /api/positions/root?fileId=1
     [HttpPost("root")]
     public async Task<IActionResult> CreateRoot([FromQuery] int fileId, [FromBody] CreateRootPositionRequest req)
@@ -118,38 +152,6 @@ public class PositionsController : ControllerBase
             .ToListAsync();
 
         return Ok(positions);
-    }
-
-    // GET /api/positions/tree?fileId=2
-    [HttpGet("tree")]
-    public async Task<IActionResult> GetPositionTree([FromQuery] int fileId)
-    {
-        var fileExists = await _db.ChessFiles.AnyAsync(f => f.ChessFileId == fileId);
-        if (!fileExists) return NotFound("File not found.");
-
-        var rootPosition = await _db.Positions
-            .Where(p => p.ChessFileId == fileId && p.ParentPositionId == null)
-            .Select(NodeSelector)
-            .FirstOrDefaultAsync();
-
-        if (rootPosition == null) return NotFound("Root position not found for this file.");
-
-        await BuildChildrenAsync(rootPosition);
-        return Ok(rootPosition);
-    }
-
-    private async Task BuildChildrenAsync(PositionNode node) {
-        var children = await _db.Positions
-            .Where(p => p.ParentPositionId == node.PositionId)
-            .OrderBy(p => p.SiblingOrder)
-            .Select(NodeSelector)
-            .ToListAsync();
-
-        node.Children = children;
-        foreach (var child in node.Children)
-        {
-            await BuildChildrenAsync(child);
-        }
     }
 
     // GET /api/positions/{positionId}

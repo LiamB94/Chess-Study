@@ -75,7 +75,7 @@ public class ChessFilesController : ControllerBase
         _db.ChessFiles.Add(file);
         await _db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetFiles), new { userId }, new
+        return CreatedAtAction(nameof(GetFileById), new { fileId = file.ChessFileId }, new
         {
             file.ChessFileId,
             file.Name,
