@@ -30,7 +30,6 @@ public class PositionsController : ControllerBase
         _db = db;
     }
 
-    public record CreateRootPositionRequest(string Fen);
     public record UpdatePositionRequest(string? Fen, string? MoveUci, string? MoveSan);
 
 
@@ -49,8 +48,6 @@ public class PositionsController : ControllerBase
         var root = nodes.SingleOrDefault(n => n.ParentPositionId == null);
         if (root == null) return NotFound("Root position not found for this file.");
 
-        var byId = nodes.ToDictionary(n => n.PositionId);
-
         var childrenByParent = nodes
             .Where(n => n.ParentPositionId != null)
             .GroupBy(n => n.ParentPositionId!.Value)
@@ -67,6 +64,8 @@ public class PositionsController : ControllerBase
         return Ok(root);
 
     }
+
+    public record CreateRootPositionRequest(string Fen);
 
     // POST /api/positions/root?fileId=1
     [HttpPost("root")]
@@ -91,24 +90,35 @@ public class PositionsController : ControllerBase
         _db.Positions.Add(root);
         await _db.SaveChangesAsync();
 
-        return Ok(new { root.PositionId, root.ChessFileId, root.Fen, root.Ply });
+        return CreatedAtAction(nameof(GetPosition), new { positionId = root.PositionId }, new
+        {
+            root.PositionId,
+            root.ChessFileId,
+            root.Fen
+        });
     }
 
-    public record CreateChildPositionRequest(int ParentPositionId, string Fen, string? MoveUci, string? MoveSan, int? SiblingOrder);
+    public record CreateChildPositionRequest(int ParentPositionId, string Fen, string? MoveUci, string? MoveSan, int? InsertAt);
 
     // POST /api/positions/child
     [HttpPost("child")]
     public async Task<IActionResult> CreateChild([FromBody] CreateChildPositionRequest req)
     {
+
         var parent = await _db.Positions.FirstOrDefaultAsync(p => p.PositionId == req.ParentPositionId);
         if (parent == null) return NotFound("Parent position not found.");
 
-        var order = req.SiblingOrder ?? await _db.Positions
-            .Where(p => p.ParentPositionId == req.ParentPositionId)
-            .Select(p => (int?)p.SiblingOrder)
-            .MaxAsync() ?? -1;
+        using var tx = await _db.Database.BeginTransactionAsync();
 
-        if (req.SiblingOrder == null) order += 1;
+        var siblings = await _db.Positions
+            .Where(p => p.ParentPositionId == parent.PositionId)
+            .OrderBy(p => p.SiblingOrder)
+            .ToListAsync();
+
+        var insertAt = req.InsertAt.HasValue ? Math.Clamp(req.InsertAt.Value, 0, siblings.Count) : siblings.Count;
+
+        for (int i = insertAt; i < siblings.Count; i++)
+            siblings[i].SiblingOrder += 1;
 
         var child = new Position
         {
@@ -117,25 +127,71 @@ public class PositionsController : ControllerBase
             Fen = req.Fen,
             MoveUci = req.MoveUci,
             MoveSan = req.MoveSan,
-            Ply = parent.Ply + 1,
-            SiblingOrder = order
+            Ply = parent.Ply + 1, // MIGHT CHANGE PLY OUT
+            SiblingOrder = insertAt
         };
 
         _db.Positions.Add(child);
         await _db.SaveChangesAsync();
+        await tx.CommitAsync();
 
-        return Ok(new
+        return CreatedAtAction(nameof(GetPosition), new { positionId = child.PositionId }, new
         {
             child.PositionId,
             child.ParentPositionId,
             child.ChessFileId,
             child.MoveUci,
             child.MoveSan,
-            child.Ply,
             child.SiblingOrder
         });
 
     }
+
+
+    public record CreateRootParentRequest(string Fen, string? MoveUci, string? MoveSan);
+
+    [HttpPost("{rootId}/prepend-root")]
+    public async Task<IActionResult> AddParentAboveRoot([FromRoute] int rootId, [FromBody] CreateRootParentRequest req)
+    {
+        using var tx = await _db.Database.BeginTransactionAsync();
+
+        var oldRoot = await _db.Positions.FirstOrDefaultAsync(p => p.PositionId == rootId);
+        if (oldRoot == null) return NotFound("Root position not found.");
+
+        if (oldRoot.ParentPositionId != null)
+            return BadRequest("Can only add a parent above the current root.");
+
+        // New root
+        var newRoot = new Position
+        {
+            ChessFileId = oldRoot.ChessFileId,
+            ParentPositionId = null,
+            Fen = req.Fen,
+            MoveUci = req.MoveUci,
+            MoveSan = req.MoveSan,
+            Ply = 0,            // potentially remove lateer
+            SiblingOrder = 0
+        };
+
+        _db.Positions.Add(newRoot);
+        await _db.SaveChangesAsync(); // get PositionId
+
+        // Make old root a child of new root 
+        oldRoot.ParentPositionId = newRoot.PositionId;
+        oldRoot.SiblingOrder = 0;
+
+        await _db.SaveChangesAsync();
+        await tx.CommitAsync();
+
+        var created = await _db.Positions
+            .Where(p => p.PositionId == newRoot.PositionId)
+            .Select(NodeSelector)
+            .FirstAsync();
+
+        return CreatedAtAction(nameof(GetPosition), new { positionId = newRoot.PositionId }, created);
+    }
+                
+
 
     // GET /api/positions?fileId=2
     [HttpGet]
@@ -154,6 +210,7 @@ public class PositionsController : ControllerBase
         return Ok(positions);
     }
 
+    // SOMEWHAT REDUNDANT WITH TREE ENDPOINT
     // GET /api/positions/{positionId}
     [HttpGet("{positionId}")]
     public async Task<IActionResult> GetPosition([FromRoute] int positionId)
@@ -168,13 +225,11 @@ public class PositionsController : ControllerBase
         return Ok(position);
     }
 
-    // PUT /api/positions/{positionId}
-    [HttpPut("{positionId}")]
-    public async Task<IActionResult> PutNode([FromRoute] int positionId, [FromBody] UpdatePositionRequest req)
+    // PATCH /api/positions/{positionId}
+    [HttpPatch("{positionId}")]
+    public async Task<IActionResult> PatchNode([FromRoute] int positionId, [FromBody] UpdatePositionRequest req)
     {
-        var position = await _db.Positions
-            .FirstOrDefaultAsync(p => p.PositionId == positionId);
-
+        var position = await _db.Positions.FirstOrDefaultAsync(p => p.PositionId == positionId);
         if (position == null) return NotFound("Position not found.");
 
         if (req.Fen != null) position.Fen = req.Fen;
@@ -191,30 +246,37 @@ public class PositionsController : ControllerBase
         return Ok(updatedNode);
     }
 
-    // DELETE /api/positions/{positionId}
+
     [HttpDelete("{positionId}")]
     public async Task<IActionResult> DeleteNode([FromRoute] int positionId)
     {
-        var position = await _db.Positions.FirstOrDefaultAsync(p => p.PositionId == positionId);
+        using var tx = await _db.Database.BeginTransactionAsync();
 
+        var position = await _db.Positions.FirstOrDefaultAsync(p => p.PositionId == positionId);
         if (position == null) return NotFound("Position not found.");
 
-        // Optional: prevent deleting root
-        if (position.ParentPositionId == null) return BadRequest("Cannot delete root position.");
+        if (position.ParentPositionId == null)
+            return BadRequest("Cannot delete root position.");
 
-        // Load all positions for this file
-        var allPositions = await _db.Positions.Where(p => p.ChessFileId == position.ChessFileId).ToListAsync();
+        var parentId = position.ParentPositionId.Value;
+        var fileId = position.ChessFileId;
+
+        // Load all positions for this file (single query)
+        var allPositions = await _db.Positions
+            .Where(p => p.ChessFileId == fileId)
+            .ToListAsync();
 
         // Build lookup: parentId -> children
-        var lookup = allPositions.Where(p => p.ParentPositionId != null).GroupBy(p => p.ParentPositionId!.Value).ToDictionary(g => g.Key, g => g.ToList());
+        var lookup = allPositions
+            .Where(p => p.ParentPositionId != null)
+            .GroupBy(p => p.ParentPositionId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
-        // Collect subtree
         var toDelete = new List<Position>();
 
-       void CollectDescendants(int id)
+        void CollectDescendants(int id)
         {
             if (!lookup.TryGetValue(id, out var kids)) return;
-
             foreach (var child in kids)
             {
                 toDelete.Add(child);
@@ -222,18 +284,28 @@ public class PositionsController : ControllerBase
             }
         }
 
-
-        // Add the node itself
+        // include the node itself + descendants
         toDelete.Add(position);
-
-        // Collect its descendants
         CollectDescendants(positionId);
 
         _db.Positions.RemoveRange(toDelete);
         await _db.SaveChangesAsync();
 
+        // Compact remaining siblings under the old parent
+        var remainingSiblings = await _db.Positions
+            .Where(p => p.ParentPositionId == parentId)
+            .OrderBy(p => p.SiblingOrder)
+            .ToListAsync();
+
+        for (int i = 0; i < remainingSiblings.Count; i++)
+            remainingSiblings[i].SiblingOrder = i;
+
+        await _db.SaveChangesAsync();
+        await tx.CommitAsync();
+
         return NoContent();
     }
+                            
 
     // PATCH /api/positions/{parentId}/reorder
     [HttpPatch("{parentId}/reorder")]
@@ -243,19 +315,22 @@ public class PositionsController : ControllerBase
             .Where(p => p.ParentPositionId == parentId)
             .ToListAsync();
 
+        if (siblings.Count == 0)
+            return NotFound("No siblings found for this parent.");
+
+        if (orderedIds.Count != siblings.Count)
+            return BadRequest("Invalid sibling IDs.");
+
+        if (orderedIds.Distinct().Count() != orderedIds.Count)
+            return BadRequest("Duplicate IDs.");
+
         var siblingById = siblings.ToDictionary(s => s.PositionId);
-
-        if (siblings.Count != orderedIds.Count || siblings.Any(s => !orderedIds.Contains(s.PositionId))) return BadRequest("Invalid sibling IDs.");
-
-        if (orderedIds.Distinct().Count() != orderedIds.Count) return BadRequest("Duplicate IDs.");
-
-        
+        foreach (var id in orderedIds)
+            if (!siblingById.ContainsKey(id))
+                return BadRequest("Invalid sibling IDs.");
 
         for (int i = 0; i < orderedIds.Count; i++)
-        {
-            var sibling = siblingById[orderedIds[i]];
-            sibling.SiblingOrder = i;
-        }
+            siblingById[orderedIds[i]].SiblingOrder = i;
 
         await _db.SaveChangesAsync();
         return NoContent();
