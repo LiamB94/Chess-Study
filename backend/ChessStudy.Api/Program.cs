@@ -16,7 +16,7 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-var app = builder.Build();
+
 
 builder.Services.AddAuthentication(options =>
 {
@@ -43,6 +43,8 @@ builder.Services.AddAuthorization();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+var app = builder.Build();
 
 
 using (var scope = app.Services.CreateScope())

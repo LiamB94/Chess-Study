@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ChessStudy.Api.DTOs;
 using System.Linq.Expressions;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ChessStudy.Api.Controllers;
 

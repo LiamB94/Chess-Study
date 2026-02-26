@@ -1,9 +1,10 @@
-using ChessStudy.api.Data; 
-using ChessStudy.api.Models;
+using ChessStudy.Api.Data; 
+using ChessStudy.Api.Models;
 using Microsoft.AspNetCore.Mvc; 
 using Microsoft.EntityFrameworkCore; 
+using Microsoft.AspNetCore.Authorization;
 
-namespace ChessStudy.api.Controllers; 
+namespace ChessStudy.Api.Controllers; 
 
 [ApiController] 
 [Authorize]
@@ -43,7 +44,6 @@ public class NotesController : ControllerBase
 
         var text = (request.Text ?? "").Trim();
         if (text.Length == 0) return BadRequest("Text cannot be empty.");
-        note.Text = text;
 
         var note = new Note
         {
