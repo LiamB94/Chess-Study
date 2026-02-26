@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ChessStudy.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/files")]
 public class ChessFilesController : ControllerBase
 {

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ChessStudy.api.Controllers; 
 
 [ApiController] 
+[Authorize]
 [Route("api/positions")] 
 public class NotesController : ControllerBase 
 { 

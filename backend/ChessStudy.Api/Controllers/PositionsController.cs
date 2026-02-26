@@ -8,6 +8,7 @@ using System.Linq.Expressions;
 namespace ChessStudy.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/positions")]
 public class PositionsController : ControllerBase
 {
