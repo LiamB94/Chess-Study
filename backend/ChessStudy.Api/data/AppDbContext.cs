@@ -15,6 +15,10 @@ public class AppDbContext : DbContext
             .WithMany(p => p.ChildPositions)
             .HasForeignKey(p => p.ParentPositionId)
             .OnDelete(DeleteBehavior.Restrict); 
+
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Email)
+            .IsUnique();
     }
 
 

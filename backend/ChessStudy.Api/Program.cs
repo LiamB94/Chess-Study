@@ -18,33 +18,34 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]!)),
+         
+        ValidateIssuer = true,
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
+
+        ValidateAudience = true,
         ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)
-        )
+
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.FromMinutes(1)
+    
     };
 });
 
 builder.Services.AddAuthorization();
 
+var app = builder.Build();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-var app = builder.Build();
+
 
 
 using (var scope = app.Services.CreateScope())

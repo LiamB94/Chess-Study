@@ -29,14 +29,14 @@ public class ArrowsController : ControllerBase
 
         var arrows = await _db.Arrows
             .Where(a => a.PositionId == positionId)
-            .Select(a => new { a.ArrowId, a.FromSquare, a.ToSquare, a.Color })
+            .Select(a => new { a.ArrowId, a.FromSquare, a.ToSquare})
             .OrderByDescending(a => a.ArrowId)
             .ToListAsync();
 
         return Ok(arrows);
     }
 
-    public record CreateArrowRequest(string FromSquare, string ToSquare, string Color);
+    public record CreateArrowRequest(string FromSquare, string ToSquare);
 
     // POST /api/positions/{positionId}/arrows
     [HttpPost("{positionId}/arrows")]
@@ -48,13 +48,9 @@ public class ArrowsController : ControllerBase
 
         var fromSquare = request.FromSquare.Trim().ToLower();
         var toSquare = request.ToSquare.Trim().ToLower();
-        var color = request.Color.Trim().ToLower();
 
         if (!IsValidSquare(fromSquare) || !IsValidSquare(toSquare)) {
             return BadRequest("Invalid square. Must be in format 'e2'.");
-        }
-        if (color != "red" && color != "green" && color != "blue") {
-            return BadRequest("Invalid color. Must be 'red', 'green', or 'blue'."); // MAYBE CHANGE BASED ON FRONTEND
         }
         if (fromSquare == toSquare) {
             return BadRequest("FromSquare and ToSquare cannot be the same.");
@@ -64,14 +60,13 @@ public class ArrowsController : ControllerBase
         {
             PositionId = positionId,
             FromSquare = fromSquare,
-            ToSquare = toSquare,
-            Color = color
+            ToSquare = toSquare
         };
 
         _db.Arrows.Add(arrow);
         await _db.SaveChangesAsync();
 
-        return Created($"/api/arrows/{arrow.ArrowId}", new { arrow.ArrowId, arrow.FromSquare, arrow.ToSquare, arrow.Color, arrow.PositionId });
+        return Created($"/api/arrows/{arrow.ArrowId}", new { arrow.ArrowId, arrow.FromSquare, arrow.ToSquare, arrow.PositionId });
     }
 
     private bool IsValidSquare(string square) {

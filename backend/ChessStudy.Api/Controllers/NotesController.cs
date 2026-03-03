@@ -71,7 +71,6 @@ public class NotesController : ControllerBase
         }
 
         if (request.Text is not null) note.Text = request.Text;
-        note.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
 
