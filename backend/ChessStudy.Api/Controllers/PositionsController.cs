@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using ChessStudy.Api.DTOs;
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Authorization;
+using ChessStudy.Api.Extensions;
 
 namespace ChessStudy.Api.Controllers;
 
@@ -39,9 +40,10 @@ public class PositionsController : ControllerBase
     [HttpGet("tree")]
     public async Task<IActionResult> GetPositionTree([FromQuery] int fileId)
     {
-
+        var userId = User.GetUserId();
+        
         var nodes = await _db.Positions
-            .Where(p => p.ChessFileId == fileId)
+            .Where(p => p.ChessFileId == fileId && p.ChessFile.UserId == userId)
             .Select(NodeSelector)
             .ToListAsync();
 
@@ -73,7 +75,8 @@ public class PositionsController : ControllerBase
     [HttpPost("root")]
     public async Task<IActionResult> CreateRoot([FromQuery] int fileId, [FromBody] CreateRootPositionRequest req)
     {
-        var fileExists = await _db.ChessFiles.AnyAsync(f => f.ChessFileId == fileId);
+        var userId = User.GetUserId();
+        var fileExists = await _db.ChessFiles.AnyAsync(f => f.ChessFileId == fileId && f.UserId == userId);
         if (!fileExists) return NotFound("File not found.");
 
         // Prevent duplicate roots
@@ -106,8 +109,8 @@ public class PositionsController : ControllerBase
     [HttpPost("child")]
     public async Task<IActionResult> CreateChild([FromBody] CreateChildPositionRequest req)
     {
-
-        var parent = await _db.Positions.FirstOrDefaultAsync(p => p.PositionId == req.ParentPositionId);
+        var userId = User.GetUserId();
+        var parent = await _db.Positions.FirstOrDefaultAsync(p => p.PositionId == req.ParentPositionId && p.ChessFile.UserId == userId);
         if (parent == null) return NotFound("Parent position not found.");
 
         using var tx = await _db.Database.BeginTransactionAsync();
@@ -155,6 +158,10 @@ public class PositionsController : ControllerBase
     [HttpPost("{rootId}/prepend-root")]
     public async Task<IActionResult> AddParentAboveRoot([FromRoute] int rootId, [FromBody] CreateRootParentRequest req)
     {
+        var userId = User.GetUserId();
+        var ownsFile = await _db.Positions.AnyAsync(p => p.PositionId == rootId && p.ChessFile.UserId == userId);
+        if (!ownsFile) return NotFound("Position not found.");
+
         using var tx = await _db.Database.BeginTransactionAsync();
 
         var oldRoot = await _db.Positions.FirstOrDefaultAsync(p => p.PositionId == rootId);
@@ -199,7 +206,8 @@ public class PositionsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetPositions([FromQuery] int fileId)
     {
-        var fileExists = await _db.ChessFiles.AnyAsync(f => f.ChessFileId == fileId);
+        var userId = User.GetUserId();
+        var fileExists = await _db.ChessFiles.AnyAsync(f => f.ChessFileId == fileId && f.UserId == userId);
         if (!fileExists) return NotFound("File not found.");
 
         var positions = await _db.Positions
@@ -217,8 +225,9 @@ public class PositionsController : ControllerBase
     [HttpGet("{positionId}")]
     public async Task<IActionResult> GetPosition([FromRoute] int positionId)
     {
+        var userId = User.GetUserId();
         var position = await _db.Positions
-            .Where(p => p.PositionId == positionId)
+            .Where(p => p.PositionId == positionId && p.ChessFile.UserId == userId)
             .Select(NodeSelector)
             .SingleOrDefaultAsync();
 
@@ -231,7 +240,8 @@ public class PositionsController : ControllerBase
     [HttpPatch("{positionId}")]
     public async Task<IActionResult> PatchNode([FromRoute] int positionId, [FromBody] UpdatePositionRequest req)
     {
-        var position = await _db.Positions.FirstOrDefaultAsync(p => p.PositionId == positionId);
+        var userId = User.GetUserId();
+        var position = await _db.Positions.FirstOrDefaultAsync(p => p.PositionId == positionId && p.ChessFile.UserId == userId);
         if (position == null) return NotFound("Position not found.");
 
         if (req.Fen != null) position.Fen = req.Fen;
@@ -252,9 +262,11 @@ public class PositionsController : ControllerBase
     [HttpDelete("{positionId}")]
     public async Task<IActionResult> DeleteNode([FromRoute] int positionId)
     {
+        var userId = User.GetUserId();
+        
         using var tx = await _db.Database.BeginTransactionAsync();
 
-        var position = await _db.Positions.FirstOrDefaultAsync(p => p.PositionId == positionId);
+        var position = await _db.Positions.FirstOrDefaultAsync(p => p.PositionId == positionId && p.ChessFile.UserId == userId);
         if (position == null) return NotFound("Position not found.");
 
         if (position.ParentPositionId == null)
@@ -313,8 +325,9 @@ public class PositionsController : ControllerBase
     [HttpPatch("{parentId}/reorder")]
     public async Task<IActionResult> ReorderSiblings([FromRoute] int parentId, [FromBody] List<int> orderedIds)
     {
+        var userId = User.GetUserId();
         var siblings = await _db.Positions
-            .Where(p => p.ParentPositionId == parentId)
+            .Where(p => p.ParentPositionId == parentId && p.ChessFile.UserId == userId)
             .ToListAsync();
 
         if (siblings.Count == 0)
