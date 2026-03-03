@@ -3,6 +3,7 @@ using ChessStudy.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using ChessStudy.Api.Extensions;
 
 namespace ChessStudy.Api.Controllers;
 
@@ -18,10 +19,12 @@ public class ChessFilesController : ControllerBase
         _db = db;
     }
 
-    // GET /api/files?userId=1
+    // GET /api/files
     [HttpGet]
-    public async Task<IActionResult> GetFiles([FromQuery] int userId)
+    public async Task<IActionResult> GetFiles()
     {
+        var userId = User.GetUserId();
+
         var files = await _db.ChessFiles
             .Where(f => f.UserId == userId)
             .OrderByDescending(f => f.CreatedAt)
@@ -38,11 +41,13 @@ public class ChessFilesController : ControllerBase
     }
 
     // GET /api/files/{fileId}
-    [HttpGet("{fileId}")]
+    [HttpGet("{fileId:int}")]
     public async Task<IActionResult> GetFileById([FromRoute] int fileId)
     {
+        var userId = User.GetUserId();
+
         var file = await _db.ChessFiles
-            .Where(f => f.ChessFileId == fileId)
+            .Where(f => f.ChessFileId == fileId && f.UserId == userId)
             .Select(f => new
             {
                 f.ChessFileId,
@@ -62,11 +67,12 @@ public class ChessFilesController : ControllerBase
     public record CreateChessFileRequest(string Name, string? Description);
 
     [HttpPost]
-    public async Task<IActionResult> CreateFile([FromQuery] int userId, [FromBody] CreateChessFileRequest req)
+    public async Task<IActionResult> CreateFile([FromBody] CreateChessFileRequest req)
     {
         if (string.IsNullOrWhiteSpace(req.Name))
             return BadRequest("Name is required.");
 
+        var userId = User.GetUserId();
         var file = new ChessFile
         {
             UserId = userId,
@@ -90,7 +96,8 @@ public class ChessFilesController : ControllerBase
 
     [HttpPatch("{fileId}")]
     public async Task<IActionResult> UpdateFile([FromRoute] int fileId, [FromBody] UpdateChessFileRequest req) {
-        var file = await _db.ChessFiles.FindAsync(fileId);
+        var userId = User.GetUserId();
+        var file = await _db.ChessFiles.FirstOrDefaultAsync(f => f.ChessFileId == fileId && f.UserId == userId);
         if (file == null) return NotFound("File not found.");
 
         var changed = false;
@@ -119,7 +126,8 @@ public class ChessFilesController : ControllerBase
     [HttpDelete("{fileId}")]
     public async Task<IActionResult> DeleteFile([FromRoute] int fileId) 
     {
-        var file = await _db.ChessFiles.FindAsync(fileId);
+        var userId = User.GetUserId();
+        var file = await _db.ChessFiles.FirstOrDefaultAsync(f => f.ChessFileId == fileId && f.UserId == userId);
         if (file == null) return NotFound("File not found.");
 
         _db.ChessFiles.Remove(file);
