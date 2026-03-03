@@ -3,6 +3,7 @@ using ChessStudy.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using ChessStudy.Api.Extensions;
 
 namespace ChessStudy.Api.Controllers;
 
@@ -22,7 +23,8 @@ public class ArrowsController : ControllerBase
     // GET /api/positions/{positionId}/arrows
     [HttpGet("{positionId}/arrows")]
     public async Task<IActionResult> GetArrowsForPosition([FromRoute] int positionId) {
-        var positionExists = await _db.Positions.AnyAsync(p => p.PositionId == positionId);
+        var userId = User.GetUserId();
+        var positionExists = await _db.Positions.AnyAsync(p => p.PositionId == positionId && p.ChessFile.UserId == userId);
         if (!positionExists) {
             return NotFound("Position not found.");
         }
@@ -41,7 +43,8 @@ public class ArrowsController : ControllerBase
     // POST /api/positions/{positionId}/arrows
     [HttpPost("{positionId}/arrows")]
     public async Task<IActionResult> CreateArrowForPosition([FromRoute] int positionId, [FromBody] CreateArrowRequest request) {
-        var positionExists = await _db.Positions.AnyAsync(p => p.PositionId == positionId);
+        var userId = User.GetUserId();
+        var positionExists = await _db.Positions.AnyAsync(p => p.PositionId == positionId && p.ChessFile.UserId == userId);
         if (!positionExists) {
             return NotFound("Position not found.");
         }
@@ -79,7 +82,8 @@ public class ArrowsController : ControllerBase
     // DELETE /api/arrows/{arrowId}
     [HttpDelete("/api/arrows/{arrowId}")]
     public async Task<IActionResult> DeleteArrow([FromRoute] int arrowId) {
-        var arrow = await _db.Arrows.FindAsync(arrowId);
+        var userId = User.GetUserId();
+        var arrow = await _db.Arrows.FirstOrDefaultAsync(a => a.ArrowId == arrowId && a.Position.ChessFile.UserId == userId);
         if (arrow == null) {
             return NotFound("Arrow not found.");
         }

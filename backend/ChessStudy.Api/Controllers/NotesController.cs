@@ -3,6 +3,7 @@ using ChessStudy.Api.Models;
 using Microsoft.AspNetCore.Mvc; 
 using Microsoft.EntityFrameworkCore; 
 using Microsoft.AspNetCore.Authorization;
+using ChessStudy.Api.Extensions;
 
 namespace ChessStudy.Api.Controllers; 
 
@@ -21,8 +22,9 @@ public class NotesController : ControllerBase
     [HttpGet("{positionId}/notes")]
     public async Task<ActionResult> GetNotesForPosition([FromRoute] int positionId)
     {
+        var userId = User.GetUserId();
         // check if position exists
-        var positionExists = await _db.Positions.AnyAsync(p => p.PositionId == positionId);
+        var positionExists = await _db.Positions.AnyAsync(p => p.PositionId == positionId && p.ChessFile.UserId == userId);
         if (!positionExists) {
             return NotFound("Position not found.");
         }
@@ -37,7 +39,8 @@ public class NotesController : ControllerBase
     [HttpPost("{positionId}/notes")]
     public async Task<ActionResult> CreateNoteForPosition([FromRoute] int positionId, [FromBody] CreateNoteRequest request)
     {
-        var positionExists = await _db.Positions.AnyAsync(p => p.PositionId == positionId);
+        var userId = User.GetUserId();
+        var positionExists = await _db.Positions.AnyAsync(p => p.PositionId == positionId && p.ChessFile.UserId == userId);
         if (!positionExists) {
             return NotFound("Position not found.");
         }
@@ -64,7 +67,8 @@ public class NotesController : ControllerBase
     [HttpPatch("/api/notes/{noteId}")]
     public async Task<ActionResult> UpdateNote([FromRoute] int noteId, [FromBody] UpdateNoteRequest request)
     {
-        var note = await _db.Notes.FindAsync(noteId);
+        var userId = User.GetUserId();
+        var note = await _db.Notes.FirstOrDefaultAsync(n => n.NoteId == noteId && n.Position.ChessFile.UserId == userId);
         if (note == null)
         {
             return NotFound("Note not found.");
@@ -81,7 +85,8 @@ public class NotesController : ControllerBase
     [HttpDelete("/api/notes/{noteId}")]
     public async Task<ActionResult> DeleteNote([FromRoute] int noteId)
     {
-        var note = await _db.Notes.FindAsync(noteId);
+        var userId = User.GetUserId();
+        var note = await _db.Notes.FirstOrDefaultAsync(n => n.NoteId == noteId && n.Position.ChessFile.UserId == userId);
         if (note == null)
         {
             return NotFound("Note not found.");
