@@ -1,5 +1,6 @@
 <div class="login-page">
     <h1>Login</h1>
+    <p class="successMessage" *ngIf="successMessage">{{ successMessage }}</p>
     <p class="subheader">Sign in to your account</p>
     <form class="login-form" (ngSubmit)="onSumbit()">
         <label for="email">Email</label>

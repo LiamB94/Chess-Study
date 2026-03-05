@@ -17,13 +17,24 @@ import { Router } from '@angular/router';
 
 
 export class LoginComponent {
-  constructor(private auth: AuthService, private router: Router) {}
+  
 
+  successMessage: string | null = null;
   error: string | null = null;
   loading: boolean = false;
   email: string = '';
   password: string = '';
   registered: boolean = false;
+
+  constructor(private auth: AuthService, private router: Router) {
+    // SSR-safe way to read navigation extras state
+    const nav = this.router.getCurrentNavigation();
+    const registered = (nav?.extras.state as { registered?: boolean } | undefined)?.registered;
+
+    if (registered) {
+      this.successMessage = 'Account created! Please log in.';
+    }
+  }
 
 
   onSumbit() {

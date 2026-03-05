@@ -23,6 +23,7 @@ export class RegisterComponent {
   loading = false;
   email = '';
   password = '';
+  
 
   onSubmit() {
   this.error = null;
@@ -37,7 +38,7 @@ export class RegisterComponent {
   this.auth.register(this.email, this.password).subscribe({
     next: () => {
       this.loading = false;
-      this.router.navigateByUrl("/login");
+      this.router.navigateByUrl("/login", {state: { registered: true }});
     },
     error: (err: HttpErrorResponse) => {
       const msg =
