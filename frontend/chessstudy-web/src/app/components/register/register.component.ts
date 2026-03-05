@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from "@angular/router";
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
+import { Router } from '@angular/router';
 
 
 
@@ -16,7 +17,7 @@ import { AuthService } from '../../core/auth.service';
 })
 
 export class RegisterComponent {
-  private auth = inject(AuthService);
+  constructor(private auth: AuthService, private router: Router) {}
 
   error: string | null = null;
   loading = false;
@@ -36,8 +37,7 @@ export class RegisterComponent {
   this.auth.register(this.email, this.password).subscribe({
     next: () => {
       this.loading = false;
-      console.log('Registered!');
-      // later: navigate somewhere
+      this.router.navigateByUrl("/login");
     },
     error: (err: HttpErrorResponse) => {
       const msg =

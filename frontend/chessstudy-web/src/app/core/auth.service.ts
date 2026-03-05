@@ -34,8 +34,12 @@ type RegisterResponse = {
     
 
     register(email: string, password: string): Observable<RegisterResponse> {
-    return this.http
-        .post<RegisterResponse>('/api/auth/register', { email, password })
-        .pipe(tap(res => localStorage.setItem(this.tokenKey, res.accessToken)));
+        return this.http
+            .post<RegisterResponse>('/api/auth/register', { email, password })
+            .pipe(tap(res => localStorage.setItem(this.tokenKey, res.accessToken)));
+    }
+
+    getMe() {
+        return this.http.get('/api/auth/me');
     }
 }

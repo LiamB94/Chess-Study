@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from "@angular/router";
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-login',
@@ -13,13 +14,16 @@ import { RouterLink } from "@angular/router";
   styleUrl: './login.component.scss'
 })
 
+
+
 export class LoginComponent {
-  private auth = inject(AuthService);
+  constructor(private auth: AuthService, private router: Router) {}
 
   error: string | null = null;
   loading: boolean = false;
   email: string = '';
   password: string = '';
+  registered: boolean = false;
 
 
   onSumbit() {
@@ -35,7 +39,7 @@ export class LoginComponent {
     this.auth.login(this.email, this.password).subscribe({
       next: () => {
         this.loading = false;
-        alert("YOUZZAA IT WORKED");
+        this.router.navigateByUrl("/dashboard")
       },
       error: (err: HttpErrorResponse) => {
         const msg =
