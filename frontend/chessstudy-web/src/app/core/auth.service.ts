@@ -4,8 +4,14 @@ import { tap } from "rxjs/operators";
 import { Observable } from "rxjs";
 
 type LoginResponse = {
-  token: string;
-}
+  accessToken: string;
+  user: { userId: number; email: string };
+};
+
+type RegisterResponse = {
+  accessToken: string;
+  user: { userId: number; email: string };
+};
 
 @Injectable({ providedIn: 'root' }) export class AuthService {
     private http = inject(HttpClient);
@@ -14,7 +20,7 @@ type LoginResponse = {
     login(email: string, password: string) : Observable<LoginResponse> {
         return this.http
             .post<LoginResponse>('/api/auth/login', { email, password })
-            .pipe(tap(response => {localStorage.setItem(this.tokenKey, response.token);}));
+            .pipe(tap(response => {localStorage.setItem(this.tokenKey, response.accessToken);}));
     }
 
     logout() : void {
@@ -25,9 +31,11 @@ type LoginResponse = {
         return localStorage.getItem(this.tokenKey);
     }
 
-    register(email: string, password: string) {
-        return this.http.post<{ token: string }>('/api/auth/register', { email, password }).pipe(
-            tap(res => localStorage.setItem(this.tokenKey, res.token))
-        );
+    
+
+    register(email: string, password: string): Observable<RegisterResponse> {
+    return this.http
+        .post<RegisterResponse>('/api/auth/register', { email, password })
+        .pipe(tap(res => localStorage.setItem(this.tokenKey, res.accessToken)));
     }
 }
