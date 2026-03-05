@@ -1,0 +1,22 @@
+<div class="login-page">
+    <h1>Login</h1>
+    <p class="subheader">Sign in to your account</p>
+    <form class="login-form" (ngSubmit)="onSumbit()">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" [(ngModel)]="email" placeholder="abc123@example.com" required>
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" [(ngModel)]="password" placeholder="••••••••" required>
+
+
+
+        <p class="error" *ngIf="error">
+            {{ error }}
+        </p>
+        
+        <button type="submit">
+            {{ loading ? 'Logging in...' : 'Login' }}
+        </button>
+    </form>
+
+    <p>No account yet? <a routerLink="/register">Create an account.</a></p>
+</div>

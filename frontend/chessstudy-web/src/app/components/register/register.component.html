@@ -1,0 +1,24 @@
+<div class="register-page">
+    <h1>Register</h1>
+    <p>Register your account</p>
+
+    <form class="register-form" (ngSubmit)="onSubmit()">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" [(ngModel)]="email" required>
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" [(ngModel)]="password" required>
+
+        <p class="error" *ngIf="error">
+            {{ error }}
+        </p>
+
+        <button type="submit">
+            {{ loading ? 'Registering...' : 'Register' }}
+        </button>
+    </form>
+
+    <p>Already have an account? <a routerLink="/login">Login here</a></p>
+
+    
+
+</div>
